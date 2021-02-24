@@ -28,6 +28,7 @@ pma_v='5.0.4'
 multiphp_v=("5.6" "7.0" "7.1" "7.2" "7.3" "7.4" "8.0")
 fpm_v="7.4"
 mariadb_v="10.5"
+aspnet_v="5.0"
 
 if [ "$release" -eq 9 ]; then
     software="nginx apache2 apache2-utils apache2-suexec-custom
@@ -44,7 +45,7 @@ if [ "$release" -eq 9 ]; then
         sudo bc ftp lsof rrdtool quota e2fslibs bsdutils e2fsprogs curl
         imagemagick fail2ban dnsutils bsdmainutils cron hestia=${HESTIA_INSTALL_VER} hestia-nginx
         hestia-php expect libmail-dkim-perl unrar-free vim-common acl sysstat
-        rsyslog openssh-server setpriv ipset libapache2-mod-ruid2 zstd"
+        rsyslog openssh-server setpriv ipset libapache2-mod-ruid2 zstd aspnetcore-runtime-$aspnet_v"
 elif [ "$release" -eq 10 ]; then
     software="nginx apache2 apache2-utils apache2-suexec-custom
         apache2-suexec-pristine libapache2-mod-fcgid libapache2-mod-php$fpm_v
@@ -61,7 +62,7 @@ elif [ "$release" -eq 10 ]; then
         quota e2fslibs bsdutils e2fsprogs curl imagemagick fail2ban dnsutils
         bsdmainutils cron hestia=${HESTIA_INSTALL_VER} hestia-nginx hestia-php expect
         libmail-dkim-perl unrar-free vim-common acl sysstat rsyslog openssh-server
-        util-linux ipset libapache2-mpm-itk zstd"
+        util-linux ipset libapache2-mpm-itk zstd aspnetcore-runtime-$aspnet_v"
 fi
 
 installer_dependencies="apt-transport-https curl dirmngr gnupg wget ca-certificates"
@@ -73,6 +74,7 @@ help() {
   -n, --nginx             Install Nginx         [yes|no]  default: yes
   -w, --phpfpm            Install PHP-FPM       [yes|no]  default: yes
   -o, --multiphp          Install Multi-PHP     [yes|no]  default: no
+  -u, --aspnet            Install ASP.NET Core  [yes|no]  default: no
   -v, --vsftpd            Install Vsftpd        [yes|no]  default: yes
   -j, --proftpd           Install ProFTPD       [yes|no]  default: no
   -k, --named             Install Bind          [yes|no]  default: yes
@@ -163,6 +165,7 @@ for arg; do
         --apache)               args="${args}-a " ;;
         --nginx)                args="${args}-n " ;;
         --phpfpm)               args="${args}-w " ;;
+        --aspnet)               args="${args}-u " ;;
         --vsftpd)               args="${args}-v " ;;
         --proftpd)              args="${args}-j " ;;
         --named)                args="${args}-k " ;;
@@ -193,12 +196,13 @@ done
 eval set -- "$args"
 
 # Parsing arguments
-while getopts "a:n:w:v:j:k:m:g:d:x:z:c:t:i:b:r:o:q:l:y:s:e:p:D:fh" Option; do
+while getopts "a:n:w:u:v:j:k:m:g:d:x:z:c:t:i:b:r:o:q:l:y:s:e:p:D:fh" Option; do
     case $Option in
         a) apache=$OPTARG ;;            # Apache
         n) nginx=$OPTARG ;;             # Nginx
         w) phpfpm=$OPTARG ;;            # PHP-FPM
         o) multiphp=$OPTARG ;;          # Multi-PHP
+        u) aspnet=$OPTARG ;;            # ASP.NET Core
         v) vsftpd=$OPTARG ;;            # Vsftpd
         j) proftpd=$OPTARG ;;           # Proftpd
         k) named=$OPTARG ;;             # Named
@@ -230,6 +234,7 @@ set_default_value 'nginx' 'yes'
 set_default_value 'apache' 'yes'
 set_default_value 'phpfpm' 'yes'
 set_default_value 'multiphp' 'no'
+set_default_value 'aspnet' 'no'
 set_default_value 'vsftpd' 'yes'
 set_default_value 'proftpd' 'no'
 set_default_value 'named' 'yes'
@@ -448,6 +453,9 @@ if [ "$multiphp"  = 'yes' ]; then
     phpfpm='yes'
     echo '   - Multi-PHP Environment'
 fi
+if [ "$aspnet"  = 'yes' ]; then
+    echo '   - ASP.NET Core'
+fi
 
 # DNS stack
 if [ "$named" = 'yes' ]; then
@@ -609,6 +617,13 @@ if [ "$mysql" = 'yes' ]; then
     apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc' > /dev/null 2>&1
 fi
 
+# Installing ASP.NET Core repo
+if [ "$aspnet" = 'yes' ]; then
+    echo "[ * ] ASP.NET Core"
+    apt-key adv --fetch-keys 'https://packages.microsoft.com/keys/microsoft.asc' > /dev/null 2>&1
+    wget "https://packages.microsoft.com/config/$VERSION/$release/prod.list" -O $apt/microsoft-prod.list > /dev/null 2>&1
+fi
+
 # Installing HestiaCP repo
 echo "[ * ] Hestia Control Panel"
 echo "deb https://$RHOST/ $codename main" > $apt/hestia.list
@@ -746,6 +761,9 @@ if [ "$apache" = 'no' ]; then
 fi
 if [ "$vsftpd" = 'no' ]; then
     software=$(echo "$software" | sed -e "s/vsftpd//")
+fi
+if [ "$aspnet" = 'no' ]; then
+    software=$(echo "$software" | sed -e "s/aspnetcore-runtime-$aspnet_v//")
 fi
 if [ "$proftpd" = 'no' ]; then
     software=$(echo "$software" | sed -e "s/proftpd-basic//")
