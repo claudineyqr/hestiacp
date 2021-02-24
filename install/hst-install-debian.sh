@@ -1265,6 +1265,9 @@ fi
 
 if [ "$multiphp" = 'yes' ] ; then
     for v in "${multiphp_v[@]}"; do
+        if [ ! -d "/etc/php/$v" ] ; then 
+            mkdir -p /etc/php/$v
+        fi        
         cp -r /etc/php/$v/ /root/hst_install_backups/php$v/
         rm -f /etc/php/$v/fpm/pool.d/*
         echo "[ * ] Install PHP version $v..."
